@@ -2,11 +2,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isKnownTool,
+  localDateISO,
+  localTime,
   matchFaqEntries,
   normalizeTaskArgs,
   pickBestSemantic,
+  TIMEZONE,
   type FaqMatch,
 } from "./tool-logic";
+
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3.5-flash";
