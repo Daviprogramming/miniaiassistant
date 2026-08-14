@@ -71,12 +71,23 @@ const tools = [
   },
 ];
 
-export const SYSTEM_PROMPT = `Você é o Mini AI Assistant, um assistente conversacional em português do Brasil.
+export function buildSystemPrompt(now: Date = new Date()): string {
+  const hoje = localDateISO(now);
+  const diaSemana = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIMEZONE,
+    weekday: "long",
+  }).format(now);
+  return `Você é o Mini AI Assistant, um assistente conversacional em português do Brasil.
 - Use a ferramenta consultar_faq para dúvidas sobre a empresa (horário, endereço, contato, suporte, sábados).
 - Se consultar_faq não trouxer nada equivalente, use buscar_faq_semantica com a pergunta original.
 - Use a ferramenta criar_tarefa quando o usuário pedir para criar/lembrar/agendar uma tarefa. Depois de criar, confirme com um resumo (título, descrição e data).
 - Caso contrário, responda diretamente, de forma breve e amigável.
-- A data de hoje é ${new Date().toISOString().slice(0, 10)}.`;
+- Agora é ${diaSemana}, ${hoje}, ${localTime(now)} (fuso ${TIMEZONE}). Calcule "amanhã", "sexta-feira", "semana que vem" etc. sempre a partir desta data real e envie o campo data no formato AAAA-MM-DD.`;
+}
+
+/** Prompt padrão (data resolvida no momento da chamada). */
+export const SYSTEM_PROMPT = buildSystemPrompt();
+
 
 async function logTool(
   supabase: SupabaseClient<any, any, any>,
