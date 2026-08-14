@@ -97,7 +97,7 @@ async function logTool(
   if (error) console.error("log insert failed", error.message);
 }
 
-async function executeTool(
+export async function executeTool(
   supabase: SupabaseClient<any, any, any>,
   userId: string,
   name: string,
