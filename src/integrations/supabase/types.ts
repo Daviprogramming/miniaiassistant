@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      faq: {
+        Row: {
+          created_at: string
+          id: string
+          pergunta: string
+          resposta: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pergunta: string
+          resposta: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pergunta?: string
+          resposta?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          criado_em: string
+          data: string | null
+          descricao: string | null
+          id: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string
+          data?: string | null
+          descricao?: string | null
+          id?: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          criado_em?: string
+          data?: string | null
+          descricao?: string | null
+          id?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
