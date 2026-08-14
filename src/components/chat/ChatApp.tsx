@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { sendChatMessage } from "@/lib/chat.functions";
+import { ensureFaqEmbeddings } from "@/lib/faq.functions";
 import { useServerFn } from "@tanstack/react-start";
 import type { User } from "@supabase/supabase-js";
 import { ArrowUp, LogOut, Menu, Sparkles } from "lucide-react";
@@ -15,6 +16,7 @@ export type Message = { id: string; role: "user" | "assistant"; content: string 
 
 export function ChatApp({ user }: { user: User }) {
   const send = useServerFn(sendChatMessage);
+  const indexFaq = useServerFn(ensureFaqEmbeddings);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -61,6 +63,7 @@ export function ChatApp({ user }: { user: User }) {
       const list = await loadConversations();
       if (list.length > 0) setActiveId(list[0]!.id);
       else await createConversation();
+      void indexFaq({ data: undefined }).catch(() => undefined);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -127,6 +130,7 @@ export function ChatApp({ user }: { user: User }) {
     if (activeId === id) {
       if (list.length > 0) setActiveId(list[0]!.id);
       else await createConversation();
+      void indexFaq({ data: undefined }).catch(() => undefined);
     }
   }
 
