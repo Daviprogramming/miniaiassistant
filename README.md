@@ -86,6 +86,9 @@ Quando o usuário escreve algo que indica intenção de criar uma tarefa (ex: "c
 6. **Tratamento de erros**: mensagens amigáveis exibidas na conversa em caso de falha, sem quebrar a interface.
 7. **Banco de dados**: PostgreSQL via Lovable Cloud, com policies (RLS) para `faq` e `tasks`.
 
+## Funcionalidades bônus implementadas
+1. **Embeddings** : Busca semântica utilizando embeddings;
+2. **Logs** : Também foi adicionado logs e observabilidade
 ---
 
 ## Sobre o projeto
