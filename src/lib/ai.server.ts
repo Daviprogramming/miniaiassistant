@@ -46,13 +46,136 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "buscar_faq_semantica",
+      description:
+        "Busca semântica no FAQ por similaridade de significado. Use quando consultar_faq não encontrar nada equivalente ou quando a pergunta for formulada de outro jeito.",
+      parameters: {
+        type: "object",
+        properties: {
+          pergunta: { type: "string", description: "A pergunta do usuário, como ele escreveu" },
+        },
+        required: ["pergunta"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 export const SYSTEM_PROMPT = `Você é o Mini AI Assistant, um assistente conversacional em português do Brasil.
 - Use a ferramenta consultar_faq para dúvidas sobre a empresa (horário, endereço, contato, suporte, sábados).
+- Se consultar_faq não trouxer nada equivalente, use buscar_faq_semantica com a pergunta original.
 - Use a ferramenta criar_tarefa quando o usuário pedir para criar/lembrar/agendar uma tarefa. Depois de criar, confirme com um resumo (título, descrição e data).
 - Caso contrário, responda diretamente, de forma breve e amigável.
 - A data de hoje é ${new Date().toISOString().slice(0, 10)}.`;
+
+async function logTool(
+  supabase: SupabaseClient<any, any, any>,
+  userId: string,
+  ferramenta: string,
+  sucesso: boolean,
+  detalhe: string | null,
+  duracaoMs: number,
+) {
+  console.log(`[tool] ${ferramenta} sucesso=${sucesso} ${duracaoMs}ms ${detalhe ?? ""}`);
+  const { error } = await supabase.from("logs").insert({
+    user_id: userId,
+    ferramenta,
+    sucesso,
+    detalhe,
+    duracao_ms: duracaoMs,
+  });
+  if (error) console.error("log insert failed", error.message);
+}
+
+async function executeTool(
+  supabase: SupabaseClient<any, any, any>,
+  userId: string,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<{ payload: unknown; sucesso: boolean; detalhe: string | null }> {
+  if (name === "consultar_faq") {
+    const { data, error } = await supabase.from("faq").select("pergunta, resposta");
+    if (error)
+      return {
+        payload: { erro: "Não foi possível consultar o FAQ." },
+        sucesso: false,
+        detalhe: error.message,
+      };
+    const termo = String(args["termo"] ?? "");
+    const encontrados = matchFaqEntries(data ?? [], termo);
+    return {
+      payload: {
+        termo,
+        encontrados,
+        faq: data ?? [],
+        dica: encontrados.length === 0 ? "Nada equivalente: use buscar_faq_semantica." : undefined,
+      },
+      sucesso: true,
+      detalhe: `termo="${termo}" resultados=${encontrados.length}`,
+    };
+  }
+
+  if (name === "buscar_faq_semantica") {
+    const pergunta = String(args["pergunta"] ?? "").trim();
+    if (!pergunta)
+      return { payload: { erro: "Pergunta ausente." }, sucesso: false, detalhe: "pergunta vazia" };
+    try {
+      const { embedText } = await import("./embeddings.server");
+      const embedding = await embedText(pergunta);
+      const { data, error } = await supabase.rpc("match_faq", {
+        query_embedding: JSON.stringify(embedding),
+        match_count: 3,
+      });
+      if (error) throw new Error(error.message);
+      const matches = ((data ?? []) as FaqMatch[]).map((m) => ({
+        pergunta: m.pergunta,
+        resposta: m.resposta,
+        similaridade: Number(m.similaridade),
+      }));
+      const melhor = pickBestSemantic(matches);
+      return {
+        payload: melhor
+          ? { melhor, candidatos: matches }
+          : { melhor: null, candidatos: matches, aviso: "Nenhuma resposta suficientemente próxima." },
+        sucesso: true,
+        detalhe: `similaridade=${melhor ? melhor.similaridade.toFixed(3) : "abaixo do limite"}`,
+      };
+    } catch (error) {
+      return {
+        payload: { erro: "Não foi possível fazer a busca semântica." },
+        sucesso: false,
+        detalhe: error instanceof Error ? error.message : "erro desconhecido",
+      };
+    }
+  }
+
+  if (name === "criar_tarefa") {
+    const parsed = normalizeTaskArgs(args);
+    if (!parsed)
+      return {
+        payload: { erro: "Título da tarefa ausente." },
+        sucesso: false,
+        detalhe: "titulo vazio",
+      };
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({ user_id: userId, ...parsed })
+      .select("id, titulo, descricao, data")
+      .single();
+    if (error)
+      return {
+        payload: { erro: "Não foi possível salvar a tarefa." },
+        sucesso: false,
+        detalhe: error.message,
+      };
+    return { payload: { criada: true, tarefa: data }, sucesso: true, detalhe: parsed.titulo };
+  }
+
+  return { payload: { erro: "Ferramenta desconhecida." }, sucesso: false, detalhe: name };
+}
 
 async function runTool(
   supabase: SupabaseClient<any, any, any>,
@@ -60,31 +183,16 @@ async function runTool(
   name: string,
   args: Record<string, unknown>,
 ): Promise<string> {
-  if (name === "consultar_faq") {
-    const { data, error } = await supabase.from("faq").select("pergunta, resposta");
-    if (error) return JSON.stringify({ erro: "Não foi possível consultar o FAQ." });
-    return JSON.stringify({ termo: args["termo"] ?? "", faq: data ?? [] });
+  const startedAt = Date.now();
+  if (!isKnownTool(name)) {
+    await logTool(supabase, userId, name, false, "ferramenta desconhecida", 0);
+    return JSON.stringify({ erro: "Ferramenta desconhecida." });
   }
-  if (name === "criar_tarefa") {
-    const titulo = String(args["titulo"] ?? "").trim();
-    if (!titulo) return JSON.stringify({ erro: "Título da tarefa ausente." });
-    const dataRaw = typeof args["data"] === "string" ? (args["data"] as string) : null;
-    const dataValida = dataRaw && /^\d{4}-\d{2}-\d{2}$/.test(dataRaw) ? dataRaw : null;
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert({
-        user_id: userId,
-        titulo,
-        descricao: typeof args["descricao"] === "string" ? args["descricao"] : null,
-        data: dataValida,
-      })
-      .select("id, titulo, descricao, data")
-      .single();
-    if (error) return JSON.stringify({ erro: "Não foi possível salvar a tarefa." });
-    return JSON.stringify({ criada: true, tarefa: data });
-  }
-  return JSON.stringify({ erro: "Ferramenta desconhecida." });
+  const { payload, sucesso, detalhe } = await executeTool(supabase, userId, name, args);
+  await logTool(supabase, userId, name, sucesso, detalhe, Date.now() - startedAt);
+  return JSON.stringify(payload);
 }
+
 
 export async function runAssistant(
   supabase: SupabaseClient<any, any, any>,
