@@ -59,6 +59,68 @@ export type Database = {
         }
         Relationships: []
       }
+      faq_embeddings: {
+        Row: {
+          conteudo: string
+          created_at: string
+          embedding: string
+          faq_id: string
+          id: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          embedding: string
+          faq_id: string
+          id?: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          embedding?: string
+          faq_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faq_embeddings_faq_id_fkey"
+            columns: ["faq_id"]
+            isOneToOne: true
+            referencedRelation: "faq"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logs: {
+        Row: {
+          created_at: string
+          detalhe: string | null
+          duracao_ms: number | null
+          ferramenta: string
+          id: string
+          sucesso: boolean
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detalhe?: string | null
+          duracao_ms?: number | null
+          ferramenta: string
+          id?: string
+          sucesso?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detalhe?: string | null
+          duracao_ms?: number | null
+          ferramenta?: string
+          id?: string
+          sucesso?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -126,7 +188,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_faq: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          faq_id: string
+          pergunta: string
+          resposta: string
+          similaridade: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
