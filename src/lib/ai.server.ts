@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -54,7 +55,7 @@ export const SYSTEM_PROMPT = `Você é o Mini AI Assistant, um assistente conver
 - A data de hoje é ${new Date().toISOString().slice(0, 10)}.`;
 
 async function runTool(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, any, any>,
   userId: string,
   name: string,
   args: Record<string, unknown>,
@@ -86,7 +87,7 @@ async function runTool(
 }
 
 export async function runAssistant(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, any, any>,
   userId: string,
   history: ChatMessage[],
 ): Promise<string> {
