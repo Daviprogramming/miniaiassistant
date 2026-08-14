@@ -22,6 +22,7 @@ export function ChatApp({ user }: { user: User }) {
   const [thinking, setThinking] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const bootstrapped = useRef(false);
 
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
@@ -54,6 +55,8 @@ export function ChatApp({ user }: { user: User }) {
   }, [user.id]);
 
   useEffect(() => {
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
     void (async () => {
       const list = await loadConversations();
       if (list.length > 0) setActiveId(list[0]!.id);
