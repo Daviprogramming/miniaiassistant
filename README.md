@@ -32,7 +32,7 @@ O fluxo de uso é o seguinte:
 
 O modelo de linguagem é acessado por meio da IA nativa disponibilizada pelo Lovable Cloud, o que elimina a necessidade de gerenciar uma chave de API própria de terceiros.
 
-A chamada ao modelo acontece inteiramente no backend, dentro de uma edge function — o frontend nunca se comunica diretamente com o LLM nem tem acesso a qualquer credencial. O fluxo é: o frontend envia a mensagem do usuário para a edge function, que monta o contexto da conversa e repassa ao modelo junto com as ferramentas disponíveis (tool calling).
+A chamada ao modelo acontece inteiramente no backend, dentro de uma edge function, o frontend nunca se comunica diretamente com o LLM nem tem acesso a qualquer credencial. O fluxo é: o frontend envia a mensagem do usuário para a edge function, que monta o contexto da conversa e repassa ao modelo junto com as ferramentas disponíveis (tool calling).
 
 O próprio modelo decide, com base na intenção identificada na mensagem, se deve:
 
