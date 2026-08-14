@@ -56,6 +56,8 @@ describe("busca semântica", () => {
 });
 
 describe("criação de tarefa", () => {
+  const hoje = "2026-08-13"; // quinta-feira
+
   it("normaliza título, descrição e data", () => {
     expect(normalizeTaskArgs({ titulo: "  Ligar ", descricao: " para o cliente ", data: "2026-08-20" })).toEqual({
       titulo: "Ligar",
@@ -64,8 +66,20 @@ describe("criação de tarefa", () => {
     });
   });
 
+  it("resolve expressões relativas a partir da data real de hoje", () => {
+    expect(normalizeTaskArgs({ titulo: "X", data: "amanhã" }, hoje)?.data).toBe("2026-08-14");
+    expect(normalizeTaskArgs({ titulo: "X", data: "hoje" }, hoje)?.data).toBe(hoje);
+    expect(normalizeTaskArgs({ titulo: "X", data: "sexta-feira" }, hoje)?.data).toBe("2026-08-14");
+    expect(normalizeTaskArgs({ titulo: "X", data: "semana que vem" }, hoje)?.data).toBe("2026-08-20");
+    expect(normalizeTaskArgs({ titulo: "X", data: "em 3 dias" }, hoje)?.data).toBe("2026-08-16");
+  });
+
+  it("descarta datas de epoch/placeholder", () => {
+    expect(normalizeTaskArgs({ titulo: "X", data: "1970-01-01" }, hoje)?.data).toBeNull();
+  });
+
   it("descarta datas em formato inválido", () => {
-    expect(normalizeTaskArgs({ titulo: "X", data: "20/08/2026" })?.data).toBeNull();
+    expect(normalizeTaskArgs({ titulo: "X", data: "20/08/2026" }, hoje)?.data).toBeNull();
   });
 
   it("rejeita tarefa sem título", () => {
@@ -73,3 +87,4 @@ describe("criação de tarefa", () => {
     expect(normalizeTaskArgs({ titulo: "   " })).toBeNull();
   });
 });
+
