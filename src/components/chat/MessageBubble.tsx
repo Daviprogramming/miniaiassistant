@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 export function MessageBubble({
   role,
@@ -12,17 +13,24 @@ export function MessageBubble({
     <div className={cn("flex bubble-in", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] whitespace-pre-wrap rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-soft",
+          "max-w-[85%] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-soft",
           isUser
-            ? "rounded-br-md bg-brand-gradient text-primary-foreground"
+            ? "whitespace-pre-wrap rounded-br-md bg-brand-gradient text-primary-foreground"
             : "rounded-bl-md border border-border bg-surface/80 text-surface-foreground",
         )}
       >
-        {content}
+        {isUser ? (
+          content
+        ) : (
+          <div className="space-y-2 [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_strong]:font-semibold">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 export function TypingBubble() {
   return (
