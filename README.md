@@ -3,103 +3,78 @@
 > Assistente conversacional com ferramentas (tool calling), desenvolvido com Lovable + Lovable Cloud.
 
 **Link da aplicação:** https://miniaiassitant.lovable.app
-**Link do repositório:** [cole aqui o link do seu repositório GitHub]
+**Link do repositório:** https://github.com/Daviprogramming/miniaiassitant
 
 ---
 
 ## Como a aplicação funciona
 
-<!--
-Descreva de forma simples o fluxo geral:
-- O que o usuário vê ao abrir o app
-- Como ele envia uma mensagem
-- O que acontece "por trás" até a resposta aparecer
-- Quais telas/funcionalidades existem (chat, login, sidebar de conversas, etc.)
--->
+Ao abrir o app, o usuário se depara com uma interface de chat estilo ChatGPT/Claude, em dark mode, com um campo de texto na parte inferior para escrever mensagens e um botão de enviar.
 
+O fluxo de uso é o seguinte:
 
+1. O usuário digita uma mensagem (pergunta, pedido de tarefa ou conversa livre) e envia clicando no botão ou pressionando Enter.
+2. A mensagem aparece imediatamente na área de conversa, alinhada à direita.
+3. Enquanto a resposta é processada, um indicador visual de "digitando" (três pontinhos animados) aparece na bolha do assistente.
+4. A mensagem do usuário é enviada para o backend (edge function do Lovable Cloud), que decide se deve responder diretamente, consultar a base de FAQ ou registrar uma nova tarefa.
+5. A resposta final retorna e é exibida na tela, alinhada à esquerda, e a conversa continua mantendo todo o histórico da sessão, com scroll automático para a mensagem mais recente.
+6. Caso ocorra algum erro (falha na IA, no banco ou em alguma ferramenta), o usuário recebe uma mensagem amigável em vez de a aplicação travar.
 
 ## Arquitetura utilizada
 
-<!--
-Descreva as camadas do projeto, por exemplo:
 - Frontend: React (gerado pelo Lovable)
 - Backend: Lovable Cloud (edge functions)
 - Banco de dados: PostgreSQL (Supabase, via Lovable Cloud)
-- Autenticação (se implementada): Supabase Auth
+- Autenticação: Supabase Auth
 - Fluxo de dados: Frontend → Edge Function → LLM / Banco de dados → Resposta ao usuário
-
-Pode incluir um diagrama simples em texto, tipo:
-
-[Usuário] → [Frontend/Chat] → [Edge Function] → [LLM (tool calling)] → [Ferramenta: FAQ ou Tasks] → [Banco de dados]
-                                                                      ↓
-                                                              [Resposta final ao usuário]
--->
-
-
 
 ## Como o LLM está integrado
 
-<!--
-Explique:
-- A IA nativa do Lovable Cloud é usada para as respostas (sem chave de API exposta no frontend)
-- A chamada ao modelo acontece dentro de uma edge function
-- Como o modelo decide qual ferramenta usar (tool calling)
--->
+O modelo de linguagem é acessado por meio da IA nativa disponibilizada pelo Lovable Cloud, o que elimina a necessidade de gerenciar uma chave de API própria de terceiros.
 
+A chamada ao modelo acontece inteiramente no backend, dentro de uma edge function — o frontend nunca se comunica diretamente com o LLM nem tem acesso a qualquer credencial. O fluxo é: o frontend envia a mensagem do usuário para a edge function, que monta o contexto da conversa e repassa ao modelo junto com as ferramentas disponíveis (tool calling).
 
+O próprio modelo decide, com base na intenção identificada na mensagem, se deve:
+
+- Responder diretamente, sem usar nenhuma ferramenta;
+- Acionar a ferramenta de consulta à FAQ; ou
+- Acionar a ferramenta de criação de tarefa.
+
+Depois de executar a ferramenta (quando necessário), o modelo utiliza o resultado retornado para formular a resposta final, que é enviada de volta ao frontend e exibida na conversa.
 
 ## Como funcionam as ferramentas
 
 ### Ferramenta 1 — Consultar FAQ
-- Base de perguntas e respostas armazenada na tabela `faq` (id, pergunta, resposta), com os 5 registros abaixo:
-  1. Qual o horário de funcionamento? → "Funcionamos de segunda a sexta, das 8h às 18h."
-  2. Qual o endereço? → "Rua Exemplo, 123, Recife - PE."
-  3. Como entrar em contato? → "Você pode nos contatar pelo e-mail contato@exemplo.com."
-  4. Existe atendimento aos sábados? → "Não, atendemos apenas de segunda a sexta."
-  5. Como solicitar suporte? → "Envie uma mensagem para suporte@exemplo.com com sua dúvida."
-<!-- Explique aqui como o modelo identifica que deve consultar essa ferramenta e como usa a resposta -->
+
+Base de perguntas e respostas armazenada na tabela `faq` (id, pergunta, resposta), com os 5 registros abaixo:
+
+1. Qual o horário de funcionamento? → "Funcionamos de segunda a sexta, das 8h às 18h."
+2. Qual o endereço? → "Rua Exemplo, 123, Recife - PE."
+3. Como entrar em contato? → "Você pode nos contatar pelo e-mail contato@exemplo.com."
+4. Existe atendimento aos sábados? → "Não, atendemos apenas de segunda a sexta."
+5. Como solicitar suporte? → "Envie uma mensagem para suporte@exemplo.com com sua dúvida."
+
+Quando a mensagem do usuário é identificada como uma pergunta relacionada a algum desses temas, o modelo aciona essa ferramenta, que consulta a tabela `faq` no banco de dados e retorna a resposta correspondente. O modelo então usa esse resultado para formular a resposta final ao usuário, em vez de responder com base apenas no seu conhecimento geral.
 
 ### Ferramenta 2 — Criar tarefa
-- Tarefas armazenadas na tabela `tasks` (id, título, descrição, data opcional, criado_em, user_id).
-<!-- Explique aqui como o modelo extrai título, descrição e data da mensagem do usuário, salva no banco e confirma ao usuário -->
 
-<!-- Se implementou algum bônus (busca semântica, mais ferramentas, etc.), descreva aqui também -->
+Tarefas armazenadas na tabela `tasks` (id, título, descrição, data opcional, criado_em, user_id).
+
+Quando o usuário escreve algo que indica intenção de criar uma tarefa (ex: "crie uma tarefa para eu revisar o relatório amanhã"), o modelo identifica essa intenção e extrai da mensagem o título, a descrição e a data (quando informada, inclusive datas relativas como "amanhã" ou "sexta-feira"). Esses dados são então salvos na tabela `tasks`, e o modelo confirma ao usuário a criação da tarefa, exibindo um resumo com as informações registradas.
 
 ## Principais dificuldades encontradas
 
-<!--
-Exemplos de coisas que você já viu no processo (adapte com suas palavras):
-- Cálculo incorreto de datas relativas (ex: "amanhã" sendo interpretado como uma data padrão/epoch em vez da data atual real)
+- Quando eu pedia para que ele criasse uma tarefa, o horário que dava era 1970, tive que resolver esse bug.
 - Ajustes de RLS (Row Level Security) no banco de dados
-- Fazer o modelo decidir corretamente entre responder direto, consultar FAQ ou criar tarefa
--->
-
-
+- Fazer a aplicação com essa limitação grande de créditos.
 
 ## O que eu melhoraria se tivesse mais tempo
 
-<!--
-Exemplos:
-- Implementar busca semântica com embeddings para a FAQ
-- Adicionar mais ferramentas (ex: clima, cálculos, agenda)
-- Melhorar testes automatizados e observabilidade/logs
+- Adicionar mais ferramentas (ex: cálculos, clima, agenda)
 - Refinar o tratamento de erros com mensagens mais específicas por tipo de falha
--->
+- Tentaria procurar mais bugs na aplicação.
 
 ---
-
-## Design
-
-- Interface limpa, moderna e minimalista, estilo "chat app" (inspirado em ChatGPT/Claude).
-- Dark mode como padrão: fundo escuro com tons de azul petróleo e roxo como destaque (gradiente sutil no header), texto em branco/cinza claro.
-- Bolhas de mensagem diferenciadas: usuário alinhado à direita com fundo em degradê azul/roxo, assistente alinhado à esquerda com fundo cinza-escuro translúcido.
-- Cantos arredondados, sombras suaves, microanimações de entrada nas mensagens (fade + slide).
-- Header fixo no topo com nome do app, ícone de assistente e avatar/menu do usuário logado.
-- Área de input fixa na parte inferior, campo de texto arredondado, botão de enviar circular.
-- Indicador de "digitando" (3 pontinhos animados) enquanto o assistente processa.
-- Layout responsivo (mobile e desktop).
-- Sidebar lateral (retrátil no mobile) listando as conversas anteriores do usuário.
 
 ## Funcionalidades obrigatórias implementadas
 
@@ -116,14 +91,6 @@ Exemplos:
 ## Sobre o projeto
 
 Este projeto foi construído com [Lovable](https://lovable.dev/).
-
-### Continuar o desenvolvimento
-
-Você pode continuar editando este projeto no [Lovable](https://lovable.dev/projects/1127703f-4bbd-4ec0-9739-eb23d845528b).
-
-- Descreva o que quer construir e o Lovable cuida do código.
-- Toda alteração feita no Lovable é commitada diretamente neste repositório.
-- O código é seu — pode dar push para `main` no GitHub e as mudanças sincronizam de volta com o Lovable.
 
 ### Rodando localmente
 
