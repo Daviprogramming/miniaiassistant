@@ -224,7 +224,7 @@ export async function runAssistant(
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("missing_api_key");
 
-  const messages: unknown[] = [{ role: "system", content: SYSTEM_PROMPT }, ...history];
+  const messages: unknown[] = [{ role: "system", content: buildSystemPrompt() }, ...history];
 
   for (let step = 0; step < 5; step++) {
     const response = await fetch(GATEWAY_URL, {
